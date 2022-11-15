@@ -1,38 +1,42 @@
 package main
 
 import (
+	"os"
+
 	"github.com/gdamore/tcell/v2"
-	"github.com/gustavosvalentim/evilcode/api/commands"
-	"github.com/gustavosvalentim/evilcode/pkg/fsstorage"
-	"github.com/gustavosvalentim/evilcode/tui"
-	"github.com/rivo/tview"
+	"github.com/gustavosvalentim/evilcode/api/buffer"
 )
 
 func main() {
-	app := tview.NewApplication()
-	pages := tview.NewPages()
-	mainView := tui.NewMainView("", "")
-	fileStorageRepo := fsstorage.NewFileSystemRepo()
-	pages.AddAndSwitchToPage("main", mainView.View(), true)
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch key := event.Key(); key {
-		case tcell.KeyCtrlC:
-			app.Stop()
-		case tcell.KeyCtrlS:
-			saveCommand, err := commands.NewSaveCommand(mainView.GetFilename(), mainView.GetContent())
-			if err != nil {
-				panic(err)
-			}
-			saveCommandHandler := commands.NewSaveCommandHandler(fileStorageRepo)
-			if err := saveCommandHandler.Handle(saveCommand); err != nil {
-				panic(err)
-			}
-			mainView.SetFilename(mainView.GetFilename())
-		default:
-		}
-		return event
-	})
-	if err := app.SetRoot(pages, true).EnableMouse(true).Run(); err != nil {
+	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	s, err := tcell.NewScreen()
+	if err != nil {
 		panic(err)
+	}
+	if err := s.Init(); err != nil {
+		panic(err)
+	}
+	s.SetStyle(defaultStyle)
+	s.Clear()
+	buf := buffer.NewBuffer(make([]byte, 0), "teste.txt")
+	bufWindow := buffer.NewBufWindow(s).
+		SetCursor(0, 0).
+		SetBuffer(buf)
+	// mainloop
+	for {
+		s.Show()
+		ev := s.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			s.Sync()
+		case *tcell.EventKey:
+			if err := bufWindow.HandleKeyEvent(ev, s); err != nil {
+				s.Fini()
+				os.Exit(0)
+			}
+		default:
+			continue
+		}
+		bufWindow.Update()
 	}
 }
