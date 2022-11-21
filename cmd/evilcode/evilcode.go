@@ -4,16 +4,20 @@ import (
 	"os"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/gustavosvalentim/evilcode/api/buffer"
+	"github.com/gustavosvalentim/evilcode/internal"
+	"github.com/gustavosvalentim/evilcode/internal/buffer"
 )
 
 func main() {
+	var err error
+
 	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	s, err := tcell.NewScreen()
 	if err != nil {
 		panic(err)
 	}
-	if err := s.Init(); err != nil {
+	err = s.Init()
+	if err != nil {
 		panic(err)
 	}
 	s.SetStyle(defaultStyle)
@@ -22,9 +26,11 @@ func main() {
 	bufWindow := buffer.NewBufWindow(s).
 		SetCursor(0, 0).
 		SetBuffer(buf)
-	// mainloop
-	for {
-		s.Show()
+	visibleWindows := []internal.Window{
+		bufWindow,
+	}
+
+	handleEvent := func() {
 		ev := s.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
@@ -35,8 +41,16 @@ func main() {
 				os.Exit(0)
 			}
 		default:
-			continue
+			break
 		}
-		bufWindow.Update()
+	}
+
+	// mainloop
+	for {
+		s.Show()
+		handleEvent()
+		for _, w := range visibleWindows {
+			w.Display()
+		}
 	}
 }

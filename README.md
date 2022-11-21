@@ -6,4 +6,4 @@ Terminal text editor built with Golang.
 
 Make sure to have go installed.
 
-Run `go build` in your terminal, the output will be a file called `evilcode` which is the executable file. `./evilcode` to start the editor.
+Just run `go build ./cmd/evilcode` in a terminal and an executable file called `evilcode` will be added in the root folder of the project.

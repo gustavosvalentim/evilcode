@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gustavosvalentim/evilcode/api/logging"
+	"github.com/gustavosvalentim/evilcode/internal/logging"
 )
 
 var bufferList []*Buffer = make([]*Buffer, 0)
@@ -71,21 +71,19 @@ func (l *LineArray) Write(c rune) {
 	l.lines[lnum] = append(l.lines[lnum], byte(c))
 }
 
-func (l *LineArray) joinLines(l0, l1 []byte) {
-	// Join l0 and l1 data and resize lines
-	// l1 MUST be equals to l0 - 1 or l0 + 1
-	// Call when cursor.x == 0
+func (l *LineArray) joinLines(l0, l1 int) {
+	l.lines[l0] = append(l.lines[l0], l.lines[l1]...)
+	if l1 < len(l.lines)-1 {
+		l.lines = append(l.lines[:l0], l.lines[l0+1:]...)
+	} else {
+		l.lines = l.lines[:len(l.lines)-1]
+	}
 }
 
 func (l *LineArray) removeCharAtLoc(loc *Loc) {
-	endx := len(l.lines[loc.y])
-	logging.Log(fmt.Sprintf("[removeCharAtLoc] %d %d %d", loc.x, loc.y, endx))
-	if loc.x == endx {
-		l.lines[loc.y] = l.lines[loc.y][:endx-1]
-	} else if loc.x == 0 {
-		if loc.y > 0 {
-			// TODO: append lines[loc.y + 1] to lines[loc.y] and resize lines
-		}
+	logging.Log(fmt.Sprintf("[removeCharAtLoc] %d %d", loc.x, loc.y))
+	if loc.x == len(l.lines[loc.y]) {
+		l.lines[loc.y] = l.lines[loc.y][:loc.x-1]
 	} else {
 		l.lines[loc.y] = append(l.lines[loc.y][:loc.x], l.lines[loc.y][loc.x:]...)
 	}
@@ -93,7 +91,13 @@ func (l *LineArray) removeCharAtLoc(loc *Loc) {
 
 func (l *LineArray) Remove(start, end *Loc) {
 	if start.y == end.y {
-		l.removeCharAtLoc(start)
+		y := end.y
+		x := end.x
+		if y > 0 && x == 0 {
+			l.joinLines(y-1, y)
+		} else {
+			l.removeCharAtLoc(end)
+		}
 	} else {
 		// TODO: multi line selection
 	}

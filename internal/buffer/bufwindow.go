@@ -2,9 +2,10 @@ package buffer
 
 import (
 	"errors"
-	"unicode"
+	"fmt"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/gustavosvalentim/evilcode/internal/logging"
 )
 
 type BufWindow struct {
@@ -40,10 +41,14 @@ func drawCharacter(x, y int, s tcell.Screen, c rune) {
 }
 
 func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
-	newCx, newCy := w.cursor.X(), w.cursor.Y()
-	if c := ev.Rune(); unicode.IsGraphic(c) {
-		drawCharacter(w.cursor.X(), w.cursor.Y(), s, c)
+	newCx, newCy := w.cursor.x, w.cursor.y
+	key := ev.Key()
+	logging.Log(fmt.Sprintf("[BufWindow.HandleKeyEvent] Key pressed: %s", string(key)))
+	if key == tcell.KeyRune {
+		c := ev.Rune()
+		drawCharacter(w.cursor.x, w.cursor.y, s, c)
 		w.buf.Write(c)
+		w.buf.UpdateModified(true)
 		newCx += 1
 	} else {
 		switch ev.Key() {
@@ -56,12 +61,14 @@ func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
 			newCx = 0
 			loc := NewLoc(w.cursor.x, w.cursor.y)
 			w.buf.NewLine(loc, loc)
-		case tcell.KeyBackspace | tcell.KeyBackspace2:
-			if w.cursor.X() == 0 && w.cursor.Y() == 0 {
+			w.buf.UpdateModified(true)
+		case tcell.KeyBackspace, tcell.KeyBackspace2:
+			if w.cursor.x == 0 && w.cursor.y == 0 {
 				break
 			}
 			// Update buffer
-			w.buf.Remove(NewLoc(w.cursor.X(), w.cursor.Y()), NewLoc(w.cursor.X(), w.cursor.Y()))
+			w.buf.Remove(NewLoc(w.cursor.x, w.cursor.y), NewLoc(w.cursor.x, w.cursor.y))
+			w.buf.UpdateModified(true)
 			newCx -= 1
 		default:
 		}
@@ -70,7 +77,7 @@ func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
 	return nil
 }
 
-func (w *BufWindow) Update() {
+func (w *BufWindow) Display() {
 	width, _ := w.Screen.Size()
 	for y := 0; y < len(w.buf.lines); y++ {
 		for x := 0; x < width; x++ {
@@ -81,5 +88,14 @@ func (w *BufWindow) Update() {
 			drawCharacter(x, y, w.Screen, rune(c))
 		}
 	}
-	w.ShowCursor(w.cursor.X(), w.cursor.Y())
+
+	lastRowNum := len(w.buf.lines) - 1
+
+	if w.cursor.y > lastRowNum {
+		w.SetCursor(len(w.buf.lines[lastRowNum]), lastRowNum)
+	}
+
+	w.ShowCursor(w.cursor.x, w.cursor.y)
+
+	logging.Log(fmt.Sprintf("[BufWindow.Display] Cursor location X: %d Y: %d", w.cursor.x, w.cursor.y))
 }
