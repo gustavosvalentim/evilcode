@@ -32,98 +32,16 @@ func (loc *Loc) Y() int {
 	return loc.y
 }
 
-func (loc *Loc) IsEqual(other *Loc) bool {
-	return loc.x == other.x && loc.y == other.y
-}
-
-type LineArray struct {
-	lines [][]byte
-}
-
-func NewLineArray(data []byte) *LineArray {
-	lines := strings.Split(string(data), "\n")
-	bLines := make([][]byte, 0)
-	for _, l := range lines {
-		bLines = append(bLines, []byte(l))
-	}
-	return &LineArray{bLines}
-}
-
-func (l *LineArray) Line(y int) []byte {
-	return l.lines[y]
-}
-
-func (l *LineArray) NewLine(from, to *Loc) {
-	fromRow := l.lines[from.y]
-	rowSize := len(fromRow)
-	if rowSize == 0 || from.x == rowSize-1 {
-		LogLocation("NewLine", from.y, from.x, to.y, to.x)
-		l.lines = append(l.lines, make([]byte, 0))
-	} else {
-		LogLocation("NewLine splitLine", from.y, from.x, to.y, to.x)
-		l.splitLine(from)
-	}
-	logging.Log(fmt.Sprintf("NewLine line count %d", len(l.lines)))
-}
-
-func (l *LineArray) Write(c rune) {
-	lnum := len(l.lines) - 1
-	l.lines[lnum] = append(l.lines[lnum], byte(c))
-}
-
-func (l *LineArray) joinLines(l0, l1 int) {
-	l.lines[l0] = append(l.lines[l0], l.lines[l1]...)
-	if l1 < len(l.lines)-1 {
-		l.lines = append(l.lines[:l0], l.lines[l0+1:]...)
-	} else {
-		l.lines = l.lines[:len(l.lines)-1]
-	}
-}
-
-func (l *LineArray) removeCharAtLoc(loc *Loc) {
-	logging.Log(fmt.Sprintf("[removeCharAtLoc] %d %d", loc.x, loc.y))
-	if loc.x == len(l.lines[loc.y]) {
-		l.lines[loc.y] = l.lines[loc.y][:loc.x-1]
-	} else {
-		l.lines[loc.y] = append(l.lines[loc.y][:loc.x], l.lines[loc.y][loc.x:]...)
-	}
-}
-
-func (l *LineArray) Remove(start, end *Loc) {
-	if start.y == end.y {
-		y := end.y
-		x := end.x
-		if y > 0 && x == 0 {
-			l.joinLines(y-1, y)
-		} else {
-			l.removeCharAtLoc(end)
-		}
-	} else {
-		// TODO: multi line selection
-	}
-}
-
-func (l *LineArray) splitLine(loc *Loc) {
-	newLine := l.lines[loc.y][loc.x:]
-	if loc.y == len(l.lines)-1 {
-		l.lines = append(l.lines, newLine)
-	} else {
-		endLines := [][]byte{newLine}
-		endLines = append(endLines, l.lines[loc.y:]...)
-		l.lines = append(l.lines[:loc.y], endLines...)
-	}
-}
-
 type Buffer struct {
-	*LineArray
+	lines      [][]byte
 	Path       string
 	modified   bool
 	modifiedAt time.Time
 }
 
-func NewBuffer(data []byte, path string) *Buffer {
+func NewBuffer(path string) *Buffer {
 	buf := &Buffer{
-		NewLineArray(data),
+		make([][]byte, 1),
 		path,
 		false,
 		time.Now(),
@@ -136,7 +54,7 @@ func NewBufferFromFile(path string) *Buffer {
 	if buf := GetOpenBuffer(path); buf != nil {
 		return buf
 	}
-	buf := NewBuffer(make([]byte, 0), path)
+	buf := NewBuffer(path)
 	if _, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			panic(err)
@@ -147,8 +65,73 @@ func NewBufferFromFile(path string) *Buffer {
 	if err != nil {
 		panic(err)
 	}
-	buf.LineArray = NewLineArray(data)
+	for _, l := range strings.Split(string(data), "/n") {
+		buf.lines = append(buf.lines, []byte(l))
+	}
 	return buf
+}
+
+func (b *Buffer) NewLine(from, to *Loc) {
+	fromRow := b.lines[from.y]
+	rowSize := len(fromRow)
+	if rowSize == 0 || from.x == rowSize {
+		LogLocation("NewLine", from.y, from.x, to.y, to.x)
+		b.lines = append(b.lines, make([]byte, 0))
+	} else {
+		LogLocation("NewLine splitLine", from.y, from.x, to.y, to.x)
+		b.splitLine(from)
+	}
+	logging.Log(fmt.Sprintf("NewLine line count %d", len(b.lines)))
+}
+
+func (b *Buffer) Delete(start, end *Loc) {
+	if start.y == end.y {
+		y := end.y
+		x := end.x
+		if y > 0 && x == 0 {
+			b.joinLines(y-1, y)
+		} else {
+			b.removeCharAtLoc(end)
+		}
+	} else {
+		// TODO: multi line selection
+	}
+}
+
+func (b *Buffer) Write(c rune) {
+	lnum := len(b.lines) - 1
+	b.lines[lnum] = append(b.lines[lnum], byte(c))
+}
+
+func (b *Buffer) joinLines(l0, l1 int) {
+	b.lines[l0] = append(b.lines[l0], b.lines[l1]...)
+	if l1 < len(b.lines)-1 {
+		b.lines = append(b.lines[:l0], b.lines[l0+1:]...)
+	} else {
+		b.lines = b.lines[:len(b.lines)-1]
+	}
+}
+
+func (b *Buffer) removeCharAtLoc(loc *Loc) {
+	logging.Log(fmt.Sprintf("[removeCharAtLoc] %d %d", loc.x, loc.y))
+	if loc.x == len(b.lines[loc.y]) {
+		b.lines[loc.y] = b.lines[loc.y][:loc.x-1]
+	} else {
+		b.lines[loc.y] = append(b.lines[loc.y][:loc.x], b.lines[loc.y][loc.x+1:]...)
+	}
+}
+
+func (b *Buffer) splitLine(loc *Loc) {
+	newLine := b.lines[loc.y][loc.x:]
+	b.lines[loc.y] = b.lines[loc.y][:loc.x]
+	if loc.y == len(b.lines)-1 {
+		b.lines = append(b.lines, newLine)
+	} else {
+		endLines := [][]byte{newLine}
+		endLines = append(endLines, b.lines[loc.y+1:]...)
+		b.lines = append(b.lines[:loc.y+1], endLines...)
+		logging.Log(fmt.Sprintf("[Buffer.splitLine] %s - %s", b.lines[loc.y], endLines))
+	}
 }
 
 func (b *Buffer) UpdateModified(modified bool) {
@@ -173,10 +156,6 @@ func GetOpenBuffer(path string) *Buffer {
 		}
 	}
 	return nil
-}
-
-func (b *Buffer) Size(y int) int {
-	return len(b.lines[y])
 }
 
 func LogLocation(name string, fromRow, fromColumn, toRow, toColumn int) {

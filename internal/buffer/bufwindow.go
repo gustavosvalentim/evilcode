@@ -67,9 +67,25 @@ func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
 				break
 			}
 			// Update buffer
-			w.buf.Remove(NewLoc(w.cursor.x, w.cursor.y), NewLoc(w.cursor.x, w.cursor.y))
+			w.buf.Delete(NewLoc(w.cursor.x, w.cursor.y), NewLoc(w.cursor.x, w.cursor.y))
 			w.buf.UpdateModified(true)
 			newCx -= 1
+		case tcell.KeyRight:
+			if w.cursor.x < len(w.buf.lines[w.cursor.y]) {
+				newCx += 1
+			}
+		case tcell.KeyLeft:
+			if w.cursor.x > 0 {
+				newCx -= 1
+			}
+		case tcell.KeyUp:
+			if w.cursor.y > 0 {
+				newCy -= 1
+			}
+		case tcell.KeyDown:
+			if w.cursor.y < len(w.buf.lines[w.cursor.y]) {
+				newCy += 1
+			}
 		default:
 		}
 	}

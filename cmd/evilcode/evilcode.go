@@ -10,25 +10,30 @@ import (
 
 func main() {
 	var err error
+	var windows []internal.Window
 
-	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	defaultStyle := tcell.StyleDefault.
+		Background(tcell.ColorReset).
+		Foreground(tcell.ColorReset)
+
 	s, err := tcell.NewScreen()
 	if err != nil {
 		panic(err)
 	}
+
 	err = s.Init()
 	if err != nil {
 		panic(err)
 	}
+
 	s.SetStyle(defaultStyle)
 	s.Clear()
-	buf := buffer.NewBuffer(make([]byte, 0), "teste.txt")
+
+	buf := buffer.NewBufferFromFile("teste.txt")
 	bufWindow := buffer.NewBufWindow(s).
 		SetCursor(0, 0).
 		SetBuffer(buf)
-	visibleWindows := []internal.Window{
-		bufWindow,
-	}
+	windows = append(windows, bufWindow)
 
 	handleEvent := func() {
 		ev := s.PollEvent()
@@ -49,7 +54,7 @@ func main() {
 	for {
 		s.Show()
 		handleEvent()
-		for _, w := range visibleWindows {
+		for _, w := range windows {
 			w.Display()
 		}
 	}
