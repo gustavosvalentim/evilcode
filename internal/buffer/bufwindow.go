@@ -6,50 +6,32 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gustavosvalentim/evilcode/internal/logging"
+	"github.com/gustavosvalentim/evilcode/internal/tui"
 )
 
 type BufWindow struct {
-	tcell.Screen
-
-	cursor *Loc
-	buf    *Buffer
+	buf        *Buffer
+	hasChanges bool
 }
 
-func NewBufWindow(s tcell.Screen) *BufWindow {
+func NewBufWindow() *BufWindow {
 	w := new(BufWindow)
-	w.Screen = s
-	return w
-}
-
-func (w *BufWindow) SetCursor(x, y int) *BufWindow {
-	w.cursor = NewLoc(x, y)
 	return w
 }
 
 func (w *BufWindow) SetBuffer(b *Buffer) *BufWindow {
 	w.buf = b
-	for y, l := range b.lines {
-		for x, bc := range l {
-			drawCharacter(x, y, w.Screen, rune(bc))
-		}
-	}
 	return w
 }
 
-func drawCharacter(x, y int, s tcell.Screen, c rune) {
-	s.SetContent(x, y, c, nil, tcell.StyleDefault)
-}
-
-func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
-	newCx, newCy := w.cursor.x, w.cursor.y
+func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey) error {
 	key := ev.Key()
-	logging.Log(fmt.Sprintf("[BufWindow.HandleKeyEvent] Key pressed: %s", string(key)))
+	logging.Log(fmt.Sprintf("[BufWindow.HandleKeyEvent] Key pressed: %s", ev.Name()))
+	cur := w.buf.cursors[0].start
 	if key == tcell.KeyRune {
 		c := ev.Rune()
-		drawCharacter(w.cursor.x, w.cursor.y, s, c)
 		w.buf.Write(c)
-		w.buf.UpdateModified(true)
-		newCx += 1
+		w.hasChanges = true
 	} else {
 		switch ev.Key() {
 		case tcell.KeyCtrlC:
@@ -57,61 +39,59 @@ func (w *BufWindow) HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error {
 		case tcell.KeyCtrlS:
 			Save(w.buf)
 		case tcell.KeyEnter:
-			newCy += 1
-			newCx = 0
-			loc := NewLoc(w.cursor.x, w.cursor.y)
-			w.buf.NewLine(loc, loc)
-			w.buf.UpdateModified(true)
+			w.buf.NewLine()
+			w.hasChanges = true
 		case tcell.KeyBackspace, tcell.KeyBackspace2:
-			if w.cursor.x == 0 && w.cursor.y == 0 {
-				break
+			err := w.buf.Delete()
+			if err != nil {
+				return err
 			}
-			// Update buffer
-			w.buf.Delete(NewLoc(w.cursor.x, w.cursor.y), NewLoc(w.cursor.x, w.cursor.y))
-			w.buf.UpdateModified(true)
-			newCx -= 1
+			w.hasChanges = true
 		case tcell.KeyRight:
-			if w.cursor.x < len(w.buf.lines[w.cursor.y]) {
-				newCx += 1
+			if cur.x < len(w.buf.lines[cur.y]) {
+				cur.x += 1
 			}
 		case tcell.KeyLeft:
-			if w.cursor.x > 0 {
-				newCx -= 1
+			if cur.x > 0 {
+				cur.x -= 1
 			}
 		case tcell.KeyUp:
-			if w.cursor.y > 0 {
-				newCy -= 1
+			if cur.y > 0 {
+				if prevLineLen := len(w.buf.lines[cur.y-1]); cur.x > prevLineLen {
+					cur.x = prevLineLen
+				}
+				cur.y -= 1
 			}
 		case tcell.KeyDown:
-			if w.cursor.y < len(w.buf.lines[w.cursor.y]) {
-				newCy += 1
+			if cur.y < len(w.buf.lines[cur.y]) {
+				if nextLineLen := len(w.buf.lines[cur.y+1]); cur.x > nextLineLen {
+					cur.x = nextLineLen
+				}
+				cur.y += 1
 			}
 		default:
 		}
 	}
-	w.SetCursor(newCx, newCy)
 	return nil
 }
 
 func (w *BufWindow) Display() {
-	width, _ := w.Screen.Size()
-	for y := 0; y < len(w.buf.lines); y++ {
-		for x := 0; x < width; x++ {
-			c := byte(0)
-			if x <= len(w.buf.lines[y])-1 {
-				c = w.buf.lines[y][x]
+	cur := w.buf.cursors[0].start
+	if w.hasChanges {
+		width, _ := tui.ScreenSize()
+		for y := 0; y < len(w.buf.lines); y++ {
+			for x := 0; x < width; x++ {
+				c := byte(0)
+				if x <= len(w.buf.lines[y])-1 {
+					c = w.buf.lines[y][x]
+				}
+				tui.DrawCharacter(x, y, rune(c))
 			}
-			drawCharacter(x, y, w.Screen, rune(c))
 		}
+		w.hasChanges = false
 	}
 
-	lastRowNum := len(w.buf.lines) - 1
+	tui.ShowCursor(cur.x, cur.y)
 
-	if w.cursor.y > lastRowNum {
-		w.SetCursor(len(w.buf.lines[lastRowNum]), lastRowNum)
-	}
-
-	w.ShowCursor(w.cursor.x, w.cursor.y)
-
-	logging.Log(fmt.Sprintf("[BufWindow.Display] Cursor location X: %d Y: %d", w.cursor.x, w.cursor.y))
+	logging.Logf("[BufWindow.Display] Cursor location X: %d Y: %d", cur.x, cur.y)
 }

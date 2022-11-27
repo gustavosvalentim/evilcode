@@ -1,8 +1,8 @@
-package internal
+package tui
 
 import "github.com/gdamore/tcell/v2"
 
 type Window interface {
 	Display()
-	HandleKeyEvent(ev *tcell.EventKey, s tcell.Screen) error
+	HandleKeyEvent(ev *tcell.EventKey) error
 }
