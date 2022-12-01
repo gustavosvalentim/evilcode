@@ -3,24 +3,28 @@ package buffer
 import (
 	"bufio"
 	"os"
+
+	"github.com/gustavosvalentim/evilcode/internal/logging"
 )
 
-func Save(b *Buffer) error {
+func SaveToFile(b *Buffer) error {
 	f, err := os.Create(b.Path)
+
 	if err != nil {
+		logging.Logf("[buffer.SaveToFile] %s", err.Error())
 		return err
 	}
-	defer func() error {
-		if err := f.Close(); err != nil {
-			return err
-		}
-		return nil
-	}()
-	w := bufio.NewWriter(f)
-	if _, err := w.WriteString(b.Text()); err != nil {
+
+	defer f.Close()
+
+	writer := bufio.NewWriter(f)
+
+	if _, err := writer.WriteString(b.Text()); err != nil {
+		logging.Logf("[buffer.SaveToFile] %s", err.Error())
 		return err
 	}
-	w.Flush()
-	b.UpdateModified(false)
+
+	writer.Flush()
+
 	return nil
 }

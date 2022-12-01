@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/gustavosvalentim/evilcode/internal/buffer"
+	"github.com/gdamore/tcell/v2"
 	"github.com/gustavosvalentim/evilcode/internal/tui"
+	"github.com/gustavosvalentim/evilcode/internal/view"
 )
 
 func main() {
@@ -12,17 +13,22 @@ func main() {
 		tui.Terminate()
 	}
 
-	buf := buffer.NewBufferFromFile("teste.txt")
-	bufWindow := buffer.NewBufWindow().
-		SetBuffer(buf)
-
-	tui.AddWindow(bufWindow)
+	editor := view.NewEditor("teste.txt")
 
 	// mainloop
 	for {
-		if err = tui.HandleEvent(); err != nil {
-			tui.Terminate()
+		ev := tui.Screen.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			tui.Screen.Sync()
+		case *tcell.EventKey:
+			editor.ProcessKeyEvent(ev)
+		default:
+			break
 		}
-		tui.UpdateScreen()
+
+		editor.Draw()
+
+		tui.Screen.Show()
 	}
 }
