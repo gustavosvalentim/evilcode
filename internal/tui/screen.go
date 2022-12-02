@@ -34,6 +34,12 @@ func DrawCharacter(x, y int, c rune) {
 	Screen.SetContent(x, y, c, nil, Style())
 }
 
+func DrawLine(startX, y int, text string) {
+	for i, c := range text {
+		DrawCharacter(startX+i, y, c)
+	}
+}
+
 func Terminate() {
 	Screen.Fini()
 	os.Exit(0)

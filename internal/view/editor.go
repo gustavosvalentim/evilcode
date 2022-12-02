@@ -15,17 +15,33 @@ type Editor struct {
 func NewEditor(path string) *Editor {
 	e := new(Editor)
 
+	_, h := tui.Screen.Size()
+
 	buf := buffer.NewBuffer(make([][]byte, 1))
 	buf.Path = path
 	buf.Cursors = append(buf.Cursors, buffer.NewCursor())
 
-	view := new(BufView)
-	view.SetBuffer(buf)
+	bufView := new(BufView)
+	bufView.SetBuffer(buf)
+	bufView.SetOffset(0, 1)
 
-	e.views = append(e.views, view)
-	e.buffers = append(e.buffers, buf)
+	infoView := new(InfoView)
+	infoView.SetBuffer(buf)
+	infoView.SetOffset(0, h-1)
+
+	e.AppendBuffer(buf)
+	e.AppendView(bufView)
+	e.AppendView(infoView)
 
 	return e
+}
+
+func (e *Editor) AppendView(v View) {
+	e.views = append(e.views, v)
+}
+
+func (e *Editor) AppendBuffer(b *buffer.Buffer) {
+	e.buffers = append(e.buffers, b)
 }
 
 func (e *Editor) ActiveView() View {

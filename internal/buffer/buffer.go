@@ -30,7 +30,7 @@ func NewBuffer(content [][]byte) *Buffer {
 
 func (b *Buffer) NewLine(loc *Loc) {
 	logging.Logf("[Buffer.NewLine] %d - %d", loc.X, loc.Y)
-	if loc.X == 0 || loc.X == len(b.Lines[loc.Y]) {
+	if len(b.Lines[loc.Y]) == 0 || loc.X == len(b.Lines[loc.Y]) {
 		b.Lines = append(b.Lines, make([]byte, 0))
 	} else {
 		b.splitLine(loc)

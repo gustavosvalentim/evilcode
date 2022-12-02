@@ -7,17 +7,24 @@ import (
 )
 
 type BufView struct {
-	buf *buffer.Buffer
+	buf     *buffer.Buffer
+	offsetX int
+	offsetY int
 }
 
 func (view *BufView) SetBuffer(buf *buffer.Buffer) {
 	view.buf = buf
 }
 
+func (view *BufView) SetOffset(x, y int) {
+	view.offsetX = x
+	view.offsetY = y
+}
+
 func (view *BufView) Draw() {
 	width, height := tui.Screen.Size()
 
-	for y := 0; y < height; y++ {
+	for y := 0; y < height-view.offsetY; y++ {
 		for x := 0; x < width; x++ {
 			c := byte(0)
 
@@ -29,7 +36,7 @@ func (view *BufView) Draw() {
 				}
 			}
 
-			tui.DrawCharacter(x, y, rune(c))
+			tui.DrawCharacter(x+view.offsetX, y, rune(c))
 		}
 	}
 
