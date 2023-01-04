@@ -1,7 +1,4 @@
-.PHONY: build install
+.PHONY: build
 
 build: go.mod
-	go build ./cmd/evilcode
-
-install:
-	go install ./cmd/evilcode
+	go build evilcode.go

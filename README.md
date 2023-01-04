@@ -4,6 +4,8 @@ Terminal text editor built with Golang.
 
 Built using [tcell](https://github.com/gdamore/tcell).
 
+Heavily based on [kilo-in-go](https://github.com/bediger4000/kilo-in-go)
+
 ## Setup
 
 Make sure to have go installed.
@@ -15,4 +17,4 @@ After the command finishes an executable file called `evilcode` will be created 
 ## Commands
 
 **CTRL+S** to save.
-**CTRL+C** to exit.
+**CTRL+Q** to exit.
