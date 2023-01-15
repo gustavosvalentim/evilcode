@@ -66,9 +66,38 @@ func updateScreen() {
 	screen.Show()
 }
 
+/** Filesystem **/
+
+func saveFile() {
+	var f *os.File
+
+	if _, err := os.Stat(e.filename); os.IsNotExist(err) {
+		f, err = os.Create(e.filename)
+		if err != nil {
+			terminate()
+		}
+	} else {
+		f, err = os.Open(e.filename)
+		if err != nil {
+			terminate()
+		}
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	for _, r := range e.rows {
+		if _, err := w.WriteString(string(r.chars) + "\n"); err != nil {
+			terminate()
+		}
+	}
+	w.Flush()
+}
+
 /** Editor **/
 
 func initEditor() {
+	e.filename = "newfile.txt"
+
 	if len(os.Args) > 1 {
 		e.filename = os.Args[1]
 		f, err := os.Open(e.filename)
@@ -183,6 +212,8 @@ func processKeyEvent(ev *tcell.EventKey) {
 		} else {
 			newLine()
 		}
+	case tcell.KeyCtrlS:
+		saveFile()
 	case tcell.KeyCtrlQ:
 		terminate()
 	default:

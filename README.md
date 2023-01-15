@@ -17,4 +17,5 @@ After the command finishes an executable file called `evilcode` will be created 
 ## Commands
 
 **CTRL+S** to save.
+
 **CTRL+Q** to exit.
