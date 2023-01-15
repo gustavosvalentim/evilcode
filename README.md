@@ -2,8 +2,20 @@
 
 Terminal text editor built with Golang.
 
+Built using [tcell](https://github.com/gdamore/tcell).
+
+Heavily based on [kilo-in-go](https://github.com/bediger4000/kilo-in-go)
+
 ## Setup
 
 Make sure to have go installed.
 
-Run `go build` in your terminal, the output will be a file called `evilcode` which is the executable file. `./evilcode` to start the editor.
+In a terminal run `make build`.
+
+After the command finishes an executable file called `evilcode` will be created at the root folder.
+
+## Commands
+
+**CTRL+S** to save.
+
+**CTRL+Q** to exit.
